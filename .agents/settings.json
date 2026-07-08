@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "project": "Antigravity-Full-Stack-Studios",
+  "permissions": {
+    "allowedCommands": [
+      "npm test",
+      "npm run dev",
+      "docker compose up",
+      "git status",
+      "git log",
+      "git diff"
+    ],
+    "blockedCommands": [
+      "rm -rf /",
+      "git push --force",
+      "cat .env"
+    ]
+  },
+  "hooks": {
+    "preToolUse": {
+      "commands": [
+        {
+          "name": "secrets-scanner",
+          "script": ".agents/hooks/validate-secrets.sh",
+          "match": "*"
+        }
+      ]
+    },
+    "postToolUse": {
+      "commands": [
+        {
+          "name": "api-schema-validator",
+          "script": ".agents/hooks/validate-api-schema.sh",
+          "match": "src/frontend/types/**/*.ts|src/backend/**/*.ts"
+        },
+        {
+          "name": "migration-validator",
+          "script": ".agents/hooks/validate-db-migrations.sh",
+          "match": "src/db/migrations/**/*.sql"
+        }
+      ]
+    }
+  },
+  "reviewMode": "lean"
+}

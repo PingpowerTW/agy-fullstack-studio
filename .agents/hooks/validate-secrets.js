@@ -1,39 +1,61 @@
 const fs = require('fs');
 const path = require('path');
 
-// 敏感詞 Regex 規則
+// D003: Regex rules — support unquoted values, new OpenAI format, multi-DB protocols
 const rules = [
-  { name: 'API Key (Generic)', regex: /(key|api_key|apikey|secret|token)\s*[:=]\s*['"][a-zA-Z0-9_\-]{16,}['"]/i },
-  { name: 'OpenAI API Key', regex: /sk-[a-zA-Z0-9]{48}/ },
+  { name: 'API Key (Generic)', regex: /(key|api_key|apikey|secret|token)\s*[:=]\s*['"]?[a-zA-Z0-9_\-]{16,}['"]?/i },
+  { name: 'OpenAI API Key', regex: /sk-(proj-)?[a-zA-Z0-9]{40,}/ },
   { name: 'Google API Key', regex: /AIzaSy[a-zA-Z0-9_\-]{33}/ },
-  { name: 'Database Password URL', regex: /postgres(ql)?:\/\/.*:[^@]+@/i }
+  { name: 'Database Password URL', regex: /(postgres(ql)?|mysql|mongodb(\+srv)?|redis):\/\/[^:]+:[^@]+@/i }
 ];
+
+// D007: Known safe placeholder values that should not trigger alerts
+const safePlaceholders = [
+  'your_api_key_here', 'CHANGE_ME', 'development_secret', 'test_token',
+  'placeholder', 'example_key', 'dummy_secret', 'xxx', 'TODO'
+];
+
+// D003: Binary file extensions to skip (avoid false positives on binary data)
+const binaryExts = ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.zip', '.tar', '.gz', '.exe', '.dll', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.svg'];
 
 function scanFile(filePath) {
   try {
     const stat = fs.statSync(filePath);
     if (!stat.isFile()) return true;
 
-    // 排除特定目錄與檔案
+    // Exclude special directories and this file itself
     const basename = path.basename(filePath);
     if (filePath.includes('.git') || filePath.includes('node_modules') || basename === 'validate-secrets.js') {
       return true;
     }
 
+    // D003: Skip binary files
+    if (binaryExts.includes(path.extname(filePath).toLowerCase())) {
+      return true;
+    }
+
     const content = fs.readFileSync(filePath, 'utf8');
     for (const rule of rules) {
-      if (rule.regex.test(content)) {
+      const match = content.match(rule.regex);
+      if (match) {
+        // D007: Check if matched value is a known safe placeholder
+        const matchedValue = match[0];
+        const isSafe = safePlaceholders.some(ph => matchedValue.toLowerCase().includes(ph.toLowerCase()));
+        if (isSafe) continue;
+
         console.error(`[SECURITY ERROR] Found potential ${rule.name} in: ${filePath}`);
         return false;
       }
     }
   } catch (err) {
-    // 忽略讀取錯誤
+    // D004: Fail-Closed — block on any read error instead of silently passing
+    console.error(`[SECURITY ERROR] Failed to read/scan file ${filePath}: ${err.message}`);
+    return false;
   }
   return true;
 }
 
-// 獲取傳入的檔案列表或掃描暫存區
+// Get file list from args or scan default directories
 const args = process.argv.slice(2);
 let success = true;
 
@@ -44,7 +66,7 @@ if (args.length > 0) {
     }
   }
 } else {
-  // 預設掃描整個 src 與 .agents 目錄中的檔案
+  // Default: recursively scan src and .agents directories
   const scanDirs = ['src', '.agents'];
   function traverse(dir) {
     const files = fs.readdirSync(dir);

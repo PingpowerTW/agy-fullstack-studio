@@ -6,22 +6,24 @@ function validateMigration(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
     const basename = path.basename(filePath);
 
-    // 檢查命名是否符合時間戳前綴 YYYYMMDD
-    if (!/^\d{8}.*\.sql$/.test(basename)) {
-      console.error(`[MIGRATION ERROR] Migration file name '${basename}' must start with 8-digit date prefix (YYYYMMDD...).`);
+    // D011: Support .sql, .js, .ts migration files
+    if (!/^\d{8}.*\.(sql|js|ts)$/.test(basename)) {
+      console.error(`[MIGRATION ERROR] Migration file name '${basename}' must start with 8-digit date prefix (YYYYMMDD...) and end with .sql, .js, or .ts.`);
       return false;
     }
 
-    // 檢查是否同時包含 Up 與 Down 指示字眼 (例如 golang-migrate 或者是 db-migrate 等慣用註解)
-    const hasUp = content.includes('Up') || content.includes('up') || content.includes('UP');
-    const hasDown = content.includes('Down') || content.includes('down') || content.includes('DOWN');
+    // D010: Use word boundary regex to prevent false matches (e.g., 'update' matching 'up')
+    const hasUp = /\bup\b/i.test(content) || /@migrate\s+up/i.test(content) || /exports\.up\b/.test(content);
+    const hasDown = /\bdown\b/i.test(content) || /@migrate\s+down/i.test(content) || /exports\.down\b/.test(content);
 
     if (!hasUp || !hasDown) {
-      console.error(`[MIGRATION ERROR] Migration file ${filePath} must contain both 'Up' (upgrade) and 'Down' (rollback) scripts.`);
+      console.error(`[MIGRATION ERROR] Migration file ${filePath} must contain explicit rollback/upgrade boundaries or comments containing 'up' and 'down'.`);
       return false;
     }
   } catch (err) {
-    // 忽略讀取錯誤
+    // D004: Fail-Closed — block on any read error
+    console.error(`[MIGRATION ERROR] Failed to read migration file ${filePath}: ${err.message}`);
+    return false;
   }
   return true;
 }

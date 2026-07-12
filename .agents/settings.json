@@ -11,9 +11,14 @@
       "git diff"
     ],
     "blockedCommands": [
-      "rm -rf /",
+      "rm -rf",
       "git push --force",
-      "cat .env"
+      "cat .env",
+      "type .env",
+      "Get-Content .env",
+      "more .env",
+      "less .env",
+      "Remove-Item -Recurse -Force"
     ]
   },
   "hooks": {
@@ -21,7 +26,7 @@
       "commands": [
         {
           "name": "secrets-scanner",
-          "script": ".agents/hooks/validate-secrets.sh",
+          "script": "node .agents/hooks/validate-secrets.js",
           "match": "*"
         }
       ]
@@ -30,13 +35,13 @@
       "commands": [
         {
           "name": "api-schema-validator",
-          "script": ".agents/hooks/validate-api-schema.sh",
+          "script": "node .agents/hooks/validate-api-schema.js",
           "match": "src/frontend/types/**/*.ts|src/backend/**/*.ts"
         },
         {
           "name": "migration-validator",
-          "script": ".agents/hooks/validate-db-migrations.sh",
-          "match": "src/db/migrations/**/*.sql"
+          "script": "node .agents/hooks/validate-db-migrations.js",
+          "match": "src/db/migrations/**/*.{sql,js,ts}"
         }
       ]
     }

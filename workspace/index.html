@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Teamwork Agent Demo</title>
+</head>
+<body>
+  <h1>Active Users</h1>
+  <div id="users"></div>
+  <script>
+    fetch('/api/users')
+      .then(res => res.json())
+      .then(res => {
+        document.getElementById('users').innerText = JSON.stringify(res.data);
+      });
+  </script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 {
   "name": "agy-teamwork-core",
   "version": "1.0.0",
+  "type": "module",
   "description": "Message Bus and Delegation script for Antigravity Teamwork Agent Framework",
   "main": "delegation.ts",
   "scripts": {
